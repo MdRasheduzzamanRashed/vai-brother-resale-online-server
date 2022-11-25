@@ -34,8 +34,8 @@ function verifyJWT(req, res, next) {
 
 async function run() {
   try {
-      const laptopsCollection = client.db("vaiBrother").collection("laptops");
-      
+    const laptopsCollection = client.db("vaiBrother").collection("laptops");
+    const brandsCollection = client.db("vaiBrother").collection("brands");
 
     app.get("/laptops", async (req, res) => {
       const query = {};
@@ -49,9 +49,25 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/brands", async (req, res) => {
+      const query = {};
+      const brands = await brandsCollection.find(query).toArray();
+      res.send(brands);
+    });
+    app.get("/brands/:brand", async (req, res) => {
+      const brand = req.params.brand;
+      console.log(brand);
+      const query = { brand };
+      const brandLaptops = await laptopsCollection.find(query).toArray();
+      res.send(brandLaptops);
+    });
 
-      
-      
+    app.get("/brand", async (req, res) => {
+      const brand = req.query.brand;
+      const query = { brand: brand };
+      const brandWise = await laptopsCollection.find(query).toArray();
+      res.send(brandWise);
+    });
   } finally {
   }
 }
