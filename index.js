@@ -62,6 +62,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/my-laptops", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const myLaptops = await laptopsCollection.find(query).toArray();
+      res.send(myLaptops);
+    });
+
     app.get("/brands", async (req, res) => {
       const query = {};
       const brands = await brandsCollection.find(query).toArray();
