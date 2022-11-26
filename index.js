@@ -36,6 +36,19 @@ async function run() {
   try {
     const laptopsCollection = client.db("vaiBrother").collection("laptops");
     const brandsCollection = client.db("vaiBrother").collection("brands");
+    const usersCollection = client.db("vaiBrother").collection("users");
+
+    app.get("/users", async (req, res) => {
+      const query = {};
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
+    });
+
+    app.post("/users", async (req, res) => {
+      const laptop = req.body;
+      const result = await usersCollection.insertOne(laptop);
+      res.send(result);
+    });
 
     app.get("/laptops", async (req, res) => {
       const query = {};
