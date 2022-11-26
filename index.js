@@ -38,10 +38,28 @@ async function run() {
     const brandsCollection = client.db("vaiBrother").collection("brands");
     const usersCollection = client.db("vaiBrother").collection("users");
 
+    const verifyAdmin = async (req, res, next) => {
+      const decodedEmail = req.decoded.email;
+      const query = { email: decodedEmail };
+      const user = await usersCollection.findOne(query);
+
+      if (user?.role !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+
     app.get("/users", async (req, res) => {
       const query = {};
       const users = await usersCollection.find(query).toArray();
       res.send(users);
+    });
+
+    app.get("/check-user", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      res.send(user);
     });
 
     app.post("/users", async (req, res) => {
