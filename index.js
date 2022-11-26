@@ -54,12 +54,13 @@ async function run() {
       const brands = await brandsCollection.find(query).toArray();
       res.send(brands);
     });
-    app.get("/brands/:brand", async (req, res) => {
-      const brand = req.params.brand;
-      console.log(brand);
-      const query = { brand };
-      const brandLaptops = await laptopsCollection.find(query).toArray();
-      res.send(brandLaptops);
+
+    app.get("/laptops/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: ObjectId(id) };
+      const laptopDetails = await laptopsCollection.findOne(query);
+      res.send(laptopDetails);
     });
 
     app.get("/brand", async (req, res) => {
