@@ -25,7 +25,9 @@ function verifyJWT(req, res, next) {
   const token = authHeader.split(" ")[1];
   jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
     if (err) {
-      return res.status(403).send({ message: "forbidden access" });
+      return res
+        .status(403)
+        .send({ message: "forbidden access 403", token: { token } });
     }
     req.decoded = decoded;
     next();
@@ -43,23 +45,30 @@ async function run() {
       const query = { email: decodedEmail };
       const user = await usersCollection.findOne(query);
 
-      if (user?.role !== "admin") {
+      if (user?.status !== "Admin") {
         return res.status(403).send({ message: "forbidden access" });
       }
       next();
     };
 
+    app.get("/jwt", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user) {
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
+          expiresIn: "1h",
+        });
+        return res.send({ accessToken: token });
+      }
+      console.log(user);
+      res.status(401).send({ accessToken: "" });
+    });
+
     app.get("/users", async (req, res) => {
       const query = {};
       const users = await usersCollection.find(query).toArray();
       res.send(users);
-    });
-
-    app.get("/check-user", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const user = await usersCollection.findOne(query);
-      res.send(user);
     });
 
     app.post("/users", async (req, res) => {
@@ -80,8 +89,12 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/my-laptops", async (req, res) => {
+    app.get("/my-laptops", verifyJWT, async (req, res) => {
       const email = req.query.email;
+      const decodedEmail = req.query.email;
+      if (email !== decodedEmail) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
       const query = { email: email };
       const myLaptops = await laptopsCollection.find(query).toArray();
       res.send(myLaptops);
@@ -106,6 +119,71 @@ async function run() {
       const query = { brand: brand };
       const brandWise = await laptopsCollection.find(query).toArray();
       res.send(brandWise);
+    });
+
+    app.get("/users/member/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send({ isMember: user?.status === "Member" });
+    });
+
+    app.get("/users/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await usersCollection.findOne(query);
+      res.send({ isAdmin: user?.status === "Admin" });
+    });
+
+    app.put("/users/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+
+      const updatedDoc = {
+        $set: {
+          status: "Admin",
+        },
+      };
+
+      const result = await usersCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+
+    app.put("/laptops/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+
+      const updatedDoc = {
+        $set: {
+          status: "Sold",
+        },
+      };
+
+      const result = await laptopsCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+
+    app.delete("/laptops/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await laptopsCollection.deleteOne(filter);
+      res.send(result);
+    });
+    app.delete("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const result = await usersCollection.deleteOne(filter);
+      res.send(result);
     });
   } finally {
   }
