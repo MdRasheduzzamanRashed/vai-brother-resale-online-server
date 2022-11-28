@@ -106,12 +106,27 @@ async function run() {
       res.send(brands);
     });
 
+    app.post("/brands", verifyJWT, verifyAdmin, async (req, res) => {
+      const brand = req.body;
+      const result = await brandsCollection.insertOne(brand);
+      res.send(result);
+    });
+
     app.get("/laptops/:id", async (req, res) => {
       const id = req.params.id;
       console.log(id);
       const query = { _id: ObjectId(id) };
       const laptopDetails = await laptopsCollection.findOne(query);
       res.send(laptopDetails);
+    });
+
+    app.get("/laptops/categories/:category", async (req, res) => {
+      const str = req.params.category;
+      const category = str.charAt(0).toUpperCase() + str.slice(1);
+      console.log(category);
+      const query = { category: category };
+      const laptops = await laptopsCollection.find(query);
+      res.send(laptops);
     });
 
     app.get("/brand", async (req, res) => {
