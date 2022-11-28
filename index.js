@@ -55,14 +55,15 @@ async function run() {
     app.get("/jwt", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
+      console.log(email);
       const user = await usersCollection.findOne(query);
+      console.log(user);
       if (user) {
         const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
           expiresIn: "1h",
         });
         return res.send({ accessToken: token });
       }
-      console.log(user);
       res.status(401).send({ accessToken: "" });
     });
 
@@ -74,6 +75,7 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const user = req.body;
+      console.log(user);
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
@@ -94,6 +96,18 @@ async function run() {
       const query = {};
       const users = await laptopsCollection.find(query).toArray();
       res.send(users);
+    });
+    app.get("/laptopsPage", async (req, res) => {
+      const page = parseInt(req.query.page);
+      const size = parseInt(req.query.size);
+      const query = {};
+      const cursor = laptopsCollection.find(query);
+      const laptops = await cursor
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      const count = await laptopsCollection.estimatedDocumentCount();
+      res.send({ count, laptops });
     });
 
     app.post("/laptops", async (req, res) => {
