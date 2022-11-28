@@ -39,6 +39,7 @@ async function run() {
     const laptopsCollection = client.db("vaiBrother").collection("laptops");
     const brandsCollection = client.db("vaiBrother").collection("brands");
     const usersCollection = client.db("vaiBrother").collection("users");
+    const blogsCollection = client.db("vaiBrother").collection("blogs");
 
     const verifyAdmin = async (req, res, next) => {
       const decodedEmail = req.decoded.email;
@@ -72,8 +73,20 @@ async function run() {
     });
 
     app.post("/users", async (req, res) => {
-      const laptop = req.body;
-      const result = await usersCollection.insertOne(laptop);
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get("/blogs", async (req, res) => {
+      const query = {};
+      const blogs = await blogsCollection.find(query).toArray();
+      res.send(blogs);
+    });
+
+    app.post("/blogs", async (req, res) => {
+      const blog = req.body;
+      const result = await blogsCollection.insertOne(blog);
       res.send(result);
     });
 
@@ -120,12 +133,12 @@ async function run() {
       res.send(laptopDetails);
     });
 
-    app.get("/laptops/categories/:category", async (req, res) => {
+    app.get("/categories/:category", async (req, res) => {
       const str = req.params.category;
       const category = str.charAt(0).toUpperCase() + str.slice(1);
       console.log(category);
       const query = { category: category };
-      const laptops = await laptopsCollection.find(query);
+      const laptops = await laptopsCollection.find(query).toArray();
       res.send(laptops);
     });
 
