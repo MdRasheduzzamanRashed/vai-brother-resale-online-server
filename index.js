@@ -25,9 +25,11 @@ function verifyJWT(req, res, next) {
   const token = authHeader.split(" ")[1];
   jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
     if (err) {
-      return res
-        .status(403)
-        .send({ message: "forbidden access 403", token: { token } });
+      return res.status(403).send({
+        message: "forbidden access 403",
+        token: { token },
+        error: err,
+      });
     }
     req.decoded = decoded;
     next();
@@ -40,6 +42,7 @@ async function run() {
     const brandsCollection = client.db("vaiBrother").collection("brands");
     const usersCollection = client.db("vaiBrother").collection("users");
     const blogsCollection = client.db("vaiBrother").collection("blogs");
+    const adsCollection = client.db("vaiBrother").collection("ads");
 
     const verifyAdmin = async (req, res, next) => {
       const decodedEmail = req.decoded.email;
@@ -55,12 +58,10 @@ async function run() {
     app.get("/jwt", async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
-      console.log(email);
       const user = await usersCollection.findOne(query);
-      console.log(user);
       if (user) {
         const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
-          expiresIn: "1h",
+          expiresIn: "24h",
         });
         return res.send({ accessToken: token });
       }
@@ -75,7 +76,6 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const user = req.body;
-      console.log(user);
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
@@ -86,9 +86,32 @@ async function run() {
       res.send(blogs);
     });
 
-    app.post("/blogs", async (req, res) => {
+    app.post("/blogs", verifyJWT, async (req, res) => {
       const blog = req.body;
       const result = await blogsCollection.insertOne(blog);
+      res.send(result);
+    });
+
+    app.get("/ads", async (req, res) => {
+      const query = {};
+      const result = await adsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.post("/ads", verifyJWT, async (req, res) => {
+      let ad = req.body;
+      ad.ads = true;
+      const result = await adsCollection.insertOne(ad);
+      res.send(result);
+    });
+
+    app.put("/adsItemSold/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const laptop = await laptopsCollection.findOne(filter);
+      laptop.status = "Sold";
+      laptop.ads = false;
+      const result = await adsCollection.replaceOne(filter, laptop);
       res.send(result);
     });
 
@@ -141,7 +164,6 @@ async function run() {
 
     app.get("/laptops/:id", async (req, res) => {
       const id = req.params.id;
-      console.log(id);
       const query = { _id: ObjectId(id) };
       const laptopDetails = await laptopsCollection.findOne(query);
       res.send(laptopDetails);
@@ -150,7 +172,6 @@ async function run() {
     app.get("/categories/:category", async (req, res) => {
       const str = req.params.category;
       const category = str.charAt(0).toUpperCase() + str.slice(1);
-      console.log(category);
       const query = { category: category };
       const laptops = await laptopsCollection.find(query).toArray();
       res.send(laptops);
@@ -196,7 +217,7 @@ async function run() {
       res.send(result);
     });
 
-    app.put("/laptops/:id", verifyJWT, verifyAdmin, async (req, res) => {
+    app.put("/laptops/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const options = { upsert: true };
@@ -204,6 +225,26 @@ async function run() {
       const updatedDoc = {
         $set: {
           status: "Sold",
+          ads: false,
+        },
+      };
+
+      const result = await laptopsCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+    app.put("/laptopsAds/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+
+      const updatedDoc = {
+        $set: {
+          ads: true,
+          status: "Available",
         },
       };
 
@@ -215,12 +256,13 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/laptops/:id", verifyJWT, verifyAdmin, async (req, res) => {
+    app.delete("/laptops/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
       const result = await laptopsCollection.deleteOne(filter);
       res.send(result);
     });
+
     app.delete("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
